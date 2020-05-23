@@ -6,127 +6,121 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.concurrent.*;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
 
-		// TODO Auto-generated method stub
-		ServerSocket serverSocket = null;
-		int clientNum = 0;
-		int serverPortNumber = 1111;
-		ArrayList<ClientHandler> clients = new ArrayList<>();
+
+	ServerSocket serverSocket = null;
+	int clientNum = 0; //keeps track of how many clients were created
+	int serverPortNumber = 1111;
+	ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
+
+
 		
-		public static void main(String[] args)
-		{
-			Server server = new Server();
+	Server()
+	{
+
+		//Create a new server socket
+		try {
+
+			serverSocket = new ServerSocket(serverPortNumber); //opens socket at port 1111
+			System.out.println(serverSocket);
 		}
-		
-		Server()
+		catch(IOException e)
 		{
-			createServerSocket();
-			loop();	
-		};
-		
-		/**
-		 * Creates a server socket
-		 */
-		private void createServerSocket() {	
+			System.out.println("Could not listen on port: " + serverPortNumber); //socket cant connect
+			System.exit(-1);
+		}
+
+		//loop forever, server is always providing a service
+		while(true) {
+			Socket clientSocket = null;
+
 			try {
-				
-				serverSocket = new ServerSocket(serverPortNumber); //opens socket at port 1111
-				System.out.println(serverSocket);
+				//waits for client to connect
+				System.out.println("Waiting for client " + (++clientNum) + " to connect");
+				clientSocket = serverSocket.accept();
+
+				//creates thread to handle client request
+				System.out.println("Server connected to client " + clientNum);
+
+				ClientHandler client = new ClientHandler(clientSocket, clientNum, this);
+				clients.put(clientNum, client); //add clients to the table
+
+				Thread clientThread = new Thread(client);
+				clientThread.start();
+
 			}
-			catch(IOException e)
-			{
-				System.out.println("Could not listen for port: " + serverPortNumber); //socket cant connect
-				System.exit(-1);
-			}	
+			catch(IOException e) {
+				System.out.println("Failed to accept port: " + serverPortNumber);
+				System.exit(-1); // exits program if failed to connect
+
+			}
 		}
+	}
 		
-		private void loop()
-		{	
-			while(true) {
-				Socket clientSocket = null;
-				
-				try {
-					//waits for client to connect
-					System.out.println("Waiting for client " + (++clientNum) + " to connect");
-					clientSocket = serverSocket.accept();
-					
-					//creates thread to handle client request
-					System.out.println("Server connected to client " + clientNum);
-					
-					ClientHandler client = new ClientHandler(clientSocket, clientNum, this);
-					clients.add(client); //add clients to the list
-					
-					Thread clientThread = new Thread(client);
-					clientThread.start();
-					
-				}
-				catch(IOException e) {
-					System.out.println("Failed to accept port: " + serverPortNumber);
-					System.exit(-1); // exits program if failed to connect
-					
-				}							
-			}		
-		}
+
 		
-		/**
-		 * Goes through the list of clients and sends message to all other clients
-		 * @param name
-		 * @param message
-		 * @param clientNum
-		 */
-		public synchronized void sendMessageToClients(String message, int clientNum) 
+	/**
+	 * Iterate through the list of clients and sends message to all other clients
+	 * @param
+	 * @param message
+	 * @param clientNum
+	 */
+	public synchronized void broadcastToClients(String message, int clientNum)
+	{
+		for(ConcurrentHashMap.Entry<Integer, ClientHandler> client : clients.entrySet())
 		{
-			for(ClientHandler client : clients)
+			if(client.getKey() != clientNum)
 			{
-				if(client.num != clientNum)
-				{
-					client.sendMessageToClient(message);
-				}
-			}	
+				client.getValue().sendMessageToClient(message);
+			}
 		}
-		
+	}
+
+
+	public static void main(String[] args)
+	{
+		Server s = new Server();
+
+	}
 
 } //end class Server
 
 
 class ClientHandler implements Runnable {
 	
-	Socket serverSocket; //socket on server side that connects to the client
-	int num; //track number for identification purposes
-	String name;
-	Scanner in = null;
-	PrintWriter out = null;
+	Socket socket; //socket on server side that connects to the client
+	int num; //tracks number for identification purposes
+	Scanner in;
+	PrintWriter out;
 	Server messageServer;
 	
 	ClientHandler(Socket s, int n, Server server) {
-		serverSocket = s;
+		socket = s;
 		num = n;
 		messageServer = server;
 	}
 	
 	@Override
 	public void run() {
-		// TODO Auto-generated method stub
-		try {
-			//read and print what client sent
-			in = new Scanner(new BufferedInputStream(serverSocket.getInputStream()));
-			out = new PrintWriter(new BufferedOutputStream(serverSocket.getOutputStream()));
-			
-			in.nextLine();
-			String message = in.nextLine();
-			System.out.println(message);
-			out.println(message);
-			messageServer.sendMessageToClients(message, num);
-			
-			
 
+		try {
+			//get socket I/O streams
+			in = new Scanner(new BufferedInputStream(socket.getInputStream()));
+			out = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()));
+
+			//listen to client request
+			String message = in.nextLine();
+			System.out.println(message); //prints message in server console
+
+			messageServer.broadcastToClients(message, num); //prints message in all other clients consoles
 			in.close();
+
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}		
 		
