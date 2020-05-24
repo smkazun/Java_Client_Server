@@ -57,9 +57,8 @@ public class Client {
 			public void run() {
 				while (true) {
 					//get message to send
-					System.out.print("Send a message: ");
+					System.out.println("Send a message: ");
 					String message = cmdLineScanner.nextLine();
-					System.out.println();
 
 					message = name + " has sent a message: " + message;
 
