@@ -15,11 +15,10 @@ public class Client {
 	Socket serverSocket = null;
 	String serverHostName = "localhost";
 	int serverPortNumber = 1111;
-	ServerListener sListener;
 	String name;
 	PrintWriter out;
 	static Scanner cmdLineScanner;
-	//Scanner in;
+	Scanner in;
 
 
 	Client() {
@@ -41,95 +40,58 @@ public class Client {
 		}
 		System.out.println("Connected to the server");
 
-		//3. create listener for server. This will keep running when a message is received
-		sListener = new ServerListener(this, serverSocket);
-		new Thread(sListener).start();
 
-		//send data to server
-		/*
-		try {
-			out = new PrintWriter(new BufferedOutputStream(serverSocket.getOutputStream()));
-			out.println(name); //sends name
-			out.flush();
-		}
-		catch(IOException e) {
-			e.printStackTrace();
-		}*/
+		//setup I/O streams
 		try{
 
 			out = new PrintWriter(new BufferedOutputStream(serverSocket.getOutputStream()));
+			in = new Scanner(new BufferedInputStream(serverSocket.getInputStream()));
 		}
 		catch(IOException e) {
 			e.printStackTrace();
 		}
 
-		//send messages forever
-		while(true)
+		Thread sendMessage = new Thread(new Runnable()
 		{
-			messagePrompt();
-		}
+			@Override
+			public void run() {
+				while (true) {
+					//get message to send
+					System.out.print("Send a message: ");
+					String message = cmdLineScanner.nextLine();
+					System.out.println();
 
+					message = name + " has sent a message: " + message;
+
+					//write message to server
+					out.println(message);
+					out.flush();
+				}
+			}
+		});
+
+		Thread readMessage = new Thread(new Runnable()
+		{
+			@Override
+			public void run() {
+				while (true) {
+
+					String message = in.nextLine();
+					System.out.println(message);
+
+				}
+			}
+		});
+
+		sendMessage.start();
+		readMessage.start();
 
 	}
 
-	/**
-	 * Prompts the user to send a message to server
-	 */
-	public void messagePrompt() {
-
-		//try{
-
-			//Client writes a message to send to server and other clients
-			System.out.print("Send a message: ");
-			String message = cmdLineScanner.nextLine();
-
-			message = name + " has sent a message: " + message;
-
-			out.println(message);
-			out.flush();
-		/*}
-		catch(IOException e) {
-			e.printStackTrace();
-		}*/
-
-	}
 
 	public static void main(String[] args)
 	{
 		Client c = new Client();
 	}	
 
-}
-
-class ServerListener implements Runnable {
-	Client c;
-	Socket socket;
-	Scanner in;
-	
-	ServerListener(Client c, Socket s) {
-
-		this.c = c;
-		socket = s;
-
-	}
-
-	@Override
-	public void run() {
-
-		try{
-			in = new Scanner(new BufferedInputStream(socket.getInputStream()));
-			System.out.println("Client - waiting to read.");
-			if(in.hasNext()){
-				String receivedMessage = in.nextLine();
-				System.out.println("\n" + receivedMessage);
-			}
-
-		}
-		catch(IOException e){
-			e.printStackTrace();
-		}
-
-	}
-
-	
 }

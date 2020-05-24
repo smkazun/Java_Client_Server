@@ -107,23 +107,33 @@ class ClientHandler implements Runnable {
 	
 	@Override
 	public void run() {
+		while(true) {
+			try {
+				//get socket I/O streams
+				in = new Scanner(new BufferedInputStream(socket.getInputStream()));
+				out = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()));
 
-		try {
-			//get socket I/O streams
-			in = new Scanner(new BufferedInputStream(socket.getInputStream()));
-			out = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()));
+				//read client message
+				String message = in.nextLine();
+				System.out.println(message); //prints message in server console
 
-			//listen to client request
-			String message = in.nextLine();
-			System.out.println(message); //prints message in server console
+				//exit chat
+				if(message.equals("exit")){
+					this.socket.close();
+					break;
+				}
 
-			messageServer.broadcastToClients(message, num); //prints message in all other clients consoles
-			in.close();
+				messageServer.broadcastToClients(message, num); //prints message in all other clients consoles
 
-		} catch (IOException e) {
-			e.printStackTrace();
-		}		
-		
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		//close resources
+		this.in.close();
+		this.out.close();
+
 	}
 	public void sendMessageToClient(String message) {
 		out.println(message);
