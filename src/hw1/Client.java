@@ -1,7 +1,6 @@
 package hw1;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -51,41 +50,18 @@ public class Client {
 			e.printStackTrace();
 		}
 
-		Thread sendMessage = new Thread(new Runnable()
-		{
-			@Override
-			public void run() {
-				while (true) {
-					//get message to send
-					System.out.println("Send a message: ");
-					String message = cmdLineScanner.nextLine();
+		SendMessage sendMessage = new SendMessage(serverSocket, cmdLineScanner, out, name);
+		ReadMessage readMessage = new ReadMessage(serverSocket, in);
 
-					message = name + " has sent a message: " + message;
+		Thread sendMessageThread = new Thread(sendMessage);
+        Thread readMessageThread = new Thread(readMessage);
 
-					//write message to server
-					out.println(message);
-					out.flush();
-				}
-			}
-		});
 
-		Thread readMessage = new Thread(new Runnable()
-		{
-			@Override
-			public void run() {
-				while (true) {
-
-					String message = in.nextLine();
-					System.out.println(message);
-
-				}
-			}
-		});
-
-		sendMessage.start();
-		readMessage.start();
+		sendMessageThread.start();
+        readMessageThread.start();
 
 	}
+
 
 
 	public static void main(String[] args)
@@ -93,4 +69,55 @@ public class Client {
 		Client c = new Client();
 	}	
 
+}
+
+class ReadMessage extends Thread {
+
+    Socket socket;
+    Scanner in;
+
+    public ReadMessage(Socket socket, Scanner in) {
+        this.socket = socket;
+        this.in = in;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+
+            String message = in.nextLine();
+            System.out.println(message);
+
+        }
+    }
+}
+
+class SendMessage extends Thread {
+
+    Socket socket;
+    Scanner in;
+    PrintWriter out;
+    String name;
+
+    public SendMessage(Socket socket, Scanner in, PrintWriter out, String name){
+        this.socket = socket;
+        this.in = in;
+        this.out = out;
+        this.name = name;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            //get message to send
+            System.out.println("Send a message: ");
+            String message = in.nextLine();
+
+            message = name + " has sent a message: " + message;
+
+            //write message to server
+            out.println(message);
+            out.flush();
+        }
+    }
 }

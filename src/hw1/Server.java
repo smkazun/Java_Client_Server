@@ -18,7 +18,6 @@ public class Server {
 	int serverPortNumber = 1111;
 	ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
 
-
 		
 	Server()
 	{
