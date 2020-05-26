@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.concurrent.*;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,49 +18,60 @@ public class Server {
 	ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
 
 		
-	Server()
-	{
+	Server() { }
 
-		//Create a new server socket
-		try {
+	public void connect(){
+        //Create a new server socket
+        try {
 
-			serverSocket = new ServerSocket(serverPortNumber); //opens socket at port 1111
-			System.out.println(serverSocket);
-		}
-		catch(IOException e)
-		{
-			System.out.println("Could not listen on port: " + serverPortNumber); //socket cant connect
-			System.exit(-1);
-		}
+            serverSocket = new ServerSocket(serverPortNumber); //opens socket at port 1111
+            System.out.println(serverSocket);
+        }
+        catch(IOException e)
+        {
+            System.out.println("Could not listen on port: " + serverPortNumber); //socket cant connect
+            System.exit(-1);
+        }
+    }
 
-		//loop forever, server is always providing a service
-		while(true) {
-			Socket clientSocket = null;
 
-			try {
-				//waits for client to connect
-				System.out.println("Waiting for client " + (++clientNum) + " to connect");
-				clientSocket = serverSocket.accept();
+	public void listen()
+    {
+        //loop forever, server is always providing a service
+        while(true) {
+            Socket clientSocket = null;
 
-				//creates thread to handle client request
-				System.out.println("Server connected to client " + clientNum);
+            try {
+                //waits for client to connect
+                System.out.println("Waiting for client " + (++clientNum) + " to connect");
+                clientSocket = serverSocket.accept();
 
-				ClientHandler client = new ClientHandler(clientSocket, clientNum, this);
-				clients.put(clientNum, client); //add clients to the table
+                //creates thread to handle client request
+                System.out.println("Server connected to client " + clientNum);
 
-				Thread clientThread = new Thread(client);
-				clientThread.start();
+                ClientHandler client = new ClientHandler(clientSocket, clientNum, this);
+                clients.put(clientNum, client); //add clients to the table
 
-			}
-			catch(IOException e) {
-				System.out.println("Failed to accept port: " + serverPortNumber);
-				System.exit(-1); // exits program if failed to connect
+                Thread clientThread = new Thread(client);
+                clientThread.start();
 
-			}
-		}
-	}
-		
+            }
+            catch(IOException e) {
+                System.out.println("Failed to accept port: " + serverPortNumber);
+                System.exit(-1); // exits program if failed to connect
 
+            }
+        }
+    }
+
+    public void close() {
+	    try{
+            serverSocket.close();
+        }
+	    catch(IOException e){
+	        e.printStackTrace();
+        }
+    }
 		
 	/**
 	 * Iterate through the list of clients and sends message to all other clients
@@ -84,6 +94,8 @@ public class Server {
 	public static void main(String[] args)
 	{
 		Server s = new Server();
+		s.connect();
+		s.listen();
 
 	}
 

@@ -11,7 +11,7 @@ import java.util.Scanner;
 public class Client {
 
 
-	Socket serverSocket = null;
+	Socket serverSocket;
 	String serverHostName = "localhost";
 	int serverPortNumber = 1111;
 	String name;
@@ -19,54 +19,70 @@ public class Client {
 	static Scanner cmdLineScanner;
 	Scanner in;
 
-
-	Client() {
-
-		//1. Enter name
-		cmdLineScanner = new Scanner(System.in);
-		System.out.print("Please enter your name and press enter: ");
-		name = cmdLineScanner.nextLine();
-
-		//2. Connect to server
-		try {
-			serverSocket = new Socket(serverHostName, serverPortNumber);
-		}
-		catch(UnknownHostException e) {
-			e.printStackTrace();
-		}
-		catch(IOException e) {
-			e.printStackTrace();
-		}
-		System.out.println("Connected to the server");
+    SendMessage sendMessage;
+    ReadMessage readMessage;
 
 
-		//setup I/O streams
-		try{
+    Client(Scanner cmdLineScanner){
+        this.cmdLineScanner = cmdLineScanner;
+    }
 
-			out = new PrintWriter(new BufferedOutputStream(serverSocket.getOutputStream()));
-			in = new Scanner(new BufferedInputStream(serverSocket.getInputStream()));
-		}
-		catch(IOException e) {
-			e.printStackTrace();
-		}
+    public void connect(){
+        //1. Enter name
+        System.out.print("Please enter your name and press enter: ");
+        name = cmdLineScanner.nextLine();
 
-		SendMessage sendMessage = new SendMessage(serverSocket, cmdLineScanner, out, name);
-		ReadMessage readMessage = new ReadMessage(serverSocket, in);
+        //2. Connect to server
+        try {
+            serverSocket = new Socket(serverHostName, serverPortNumber);
+        }
+        catch(UnknownHostException e) {
+            e.printStackTrace();
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Connected to the server");
+    }
 
-		Thread sendMessageThread = new Thread(sendMessage);
+	public void start(){
+
+        //setup I/O streams
+        try{
+
+            out = new PrintWriter(new BufferedOutputStream(serverSocket.getOutputStream()));
+            in = new Scanner(new BufferedInputStream(serverSocket.getInputStream()));
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+        }
+
+        name = "test"; //TODO: delete
+        sendMessage = new SendMessage(serverSocket, cmdLineScanner, out, name);
+        readMessage = new ReadMessage(serverSocket, in);
+
+        Thread sendMessageThread = new Thread(sendMessage);
         Thread readMessageThread = new Thread(readMessage);
 
 
-		sendMessageThread.start();
+        sendMessageThread.start();
         readMessageThread.start();
+    }
 
-	}
+    public void close() {
+        in.close();
+        out.close();
+        cmdLineScanner.close();
 
+    }
 
 
 	public static void main(String[] args)
 	{
-		Client c = new Client();
+        Scanner in = new Scanner(System.in);
+		Client c = new Client(in);
+		c.connect();
+		c.start();
 	}	
 
 }
