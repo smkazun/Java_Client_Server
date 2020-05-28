@@ -3,14 +3,18 @@ package hw1;
 import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.Scanner;
 
+
+/**
+ *  A client that takes in the user's name and attempts to make a connection with the server,
+ *  so that multiple clients may chat with each other.
+ */
 public class Client {
 
 
 	Socket serverSocket;
-	String serverHostName = "localhost";
-	int serverPortNumber = 1111;
+	String serverHostName;
+	int serverPortNumber;
 	String name;
 	PrintWriter out;
 	BufferedReader cmdLineReader;
@@ -20,11 +24,17 @@ public class Client {
     ReadMessage readMessage;
 
 
-    Client(BufferedReader cmdLineReader){
+    Client(BufferedReader cmdLineReader, String serverHostName, int serverPortNumber){
         this.cmdLineReader = cmdLineReader;
+        serverSocket = null;
+        this.serverHostName = serverHostName;
+        this.serverPortNumber = serverPortNumber;
 
     }
 
+    /**
+     * Connects with a server, takes in a name
+     */
     public void connect(){
 
         try {
@@ -44,6 +54,10 @@ public class Client {
         System.out.println("Connected to the server");
     }
 
+    /**
+     * Starts the necessary streams for communication. Uses one thread to read incoming messages via a BufferedReader,
+     * and another thread to send outgoing messages via a PrintWriter
+     */
 	public void start(){
 
         //setup I/O streams
@@ -67,10 +81,14 @@ public class Client {
         readMessageThread.start();
     }
 
+    /**
+     * Closes the streams associated with the client
+     */
     public void close() {
         try{
             in.close();
             cmdLineReader.close();
+            serverSocket.close();
         }
         catch (IOException e)
         {
@@ -81,18 +99,24 @@ public class Client {
 
     }
 
-
+    /**
+     * Starts the application
+     * @param args
+     */
 	public static void main(String[] args)
 	{
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 
-		Client c = new Client(in);
+		Client c = new Client(in, "localhost", 1111);
 		c.connect();
 		c.start();
 	}	
 
 }
 
+/**
+ * This class helps the clients read messages coming in from the server
+ */
 class ReadMessage extends Thread {
 
     Socket socket;
@@ -103,6 +127,10 @@ class ReadMessage extends Thread {
         this.in = in;
     }
 
+    /**
+     * Reads incoming messages from the server
+     * @return the message from the server
+     */
     public String readMessageFromServer(){
 
         String message = "";
@@ -115,6 +143,9 @@ class ReadMessage extends Thread {
         return message;
     }
 
+    /**
+     * Prints the messages from the server
+     */
     public void printReadMessage()
     {
         String message = readMessageFromServer();
@@ -129,6 +160,9 @@ class ReadMessage extends Thread {
     }
 }
 
+/**
+ * This class helps the client send messages to other clients via the server.
+ */
 class SendMessage extends Thread {
 
     Socket socket;
@@ -143,6 +177,10 @@ class SendMessage extends Thread {
         this.name = name;
     }
 
+    /**
+     * Creates a user made message
+     * @return the message to send to the server
+     */
     public String createMessage(){
 
         String message = "";
@@ -161,6 +199,9 @@ class SendMessage extends Thread {
 
     }
 
+    /**
+     * Sends a user created message to the server
+     */
     public void sendMessageToServer(){
         String message = createMessage();
         out.println(message);

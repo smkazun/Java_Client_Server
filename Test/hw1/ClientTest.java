@@ -1,38 +1,23 @@
 package hw1;
 
-import org.junit.After;
+
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.mockito.runners.MockitoJUnitRunner;
-
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Scanner;
-
 import static org.mockito.Mockito.*;
 
 
 public class ClientTest {
 
-    private static Scanner cmdLineScanner;
-    private static Scanner in;
-    private static PrintWriter out;
 
-    static Thread serverThread;
     static ServerSocket server;
-
-    private OutputStream serverOut;
-    private InputStream serverIn;
-
-
 
 
     @Before
@@ -41,74 +26,49 @@ public class ClientTest {
     }
 
 
-    @Before //@BeforeClass
-    public void setUp() throws Exception {
 
-       try{
-           server = new ServerSocket(1111);
-           listen(server);
-       }
-       catch(IOException e){
-           e.printStackTrace();
-       }
+    @BeforeClass
+    public static void setUp() throws Exception {
 
+       server = new ServerSocket(1111);
+       listen(server);
     }
 
-    /*
-    @After
-    public void tearDown() throws Exception {
-        in.close();
-        out.close();
-        cmdLineScanner.close();
-        s.close();
-    } */
+
+    @AfterClass
+    public static void tearDown() throws Exception {
+        server.close();
+    }
 
 
     @Test
-    public void testClientStart() {
+    public void testClientStart() throws IOException{
 
-        //SendMessage mockSendMessage = Mockito.mock(SendMessage.class);
-        //when(mockSendMessage.run()).thenReturn(true);
+        BufferedReader mockReader = mock(BufferedReader.class);
+        //ReadMessage mockReadMessage = mock(ReadMessage.class);
+        //SendMessage mockSendMessage = mock(SendMessage.class);
 
-        //setup
-        String data = "Ben" + "\nHow are you im good" + "\nDown to play tomorrow?";
-        System.setIn(new ByteArrayInputStream(data.getBytes()));
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
 
-        Client c = new Client(reader);
+        //Act
+        Client c = new Client(mockReader, "localhost", 1111);
         c.connect();
         c.start();
 
-        Client spy = Mockito.spy(c);
-        Mockito.doNothing().when(spy).start();
+        //Assert
+        assertNotNull(c.out);
+        assertNotNull(c.in);
+        assertNotNull(c.readMessage);
+        assertNotNull(c.sendMessage);
 
-        //act
-
-
-        //assert
-        assertEquals("How are you im good", c.readMessage.readMessageFromServer());
-
-
-
-    }
-
-
-    @Test
-    public void testSendMessage() {
-
-
-        SendMessage mockSendMessage = Mockito.mock(SendMessage.class);
-        //when(mockSendMessage.run()).thenReturn(true);
-
-
-       // verify(readMessage, times(1)).run();
-        //verify(sendMessage, times(1)).run();
-
+        //verify(mockReadMessage).run();
+        //verify(mockSendMessage).run();
 
     }
 
 
 
+    //DONE
     @Test
     public void testReadMessageFromServer(){
 
@@ -135,48 +95,32 @@ public class ClientTest {
 
     }
 
+    //DONE
     @Test
-    public void testSendMessageToServer(){
+    public void testSendMessageToServer() throws IOException {
 
         BufferedReader mockReader = mock(BufferedReader.class);
         Socket mockSocket = mock(Socket.class);
         PrintWriter mockWriter = mock(PrintWriter.class);
         final String name = "Ben";
 
-        try {
-            when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
-            when(mockWriter.println(" ")).thenReturn("Hello").
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
+        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
 
         //Act
-        SendMessage send = new SendMessage(mockSocket, mockReader, mockWriter, name);
-        //String testMessage = send.createMessage();
-        //String testMessage2 = send.createMessage();
-        //String testMessage3 = send.createMessage();
+        SendMessage send = new SendMessage(mockSocket, mockReader, mockWriter, name); //mockSocket
 
         send.sendMessageToServer();
         send.sendMessageToServer();
         send.sendMessageToServer();
-
-        /*
-        try {
-            //printWrite(mockWriter, testMessage);
-            //printWrite(mockWriter, testMessage2);
-            //printWrite(mockWriter, testMessage3);
-        }
-        catch(IOException e)
-        {
-            e.printStackTrace();
-        }*/
 
         //assert
-        assertEquals();
+        verify(mockWriter).println("Ben has sent a message: Hello");
+        verify(mockWriter).println("Ben has sent a message: Im well");
+        verify(mockWriter).println("Ben has sent a message: and you?");
 
     }
 
+    //DONE
     @Test
     public void testCreateMessage(){
 
@@ -208,14 +152,14 @@ public class ClientTest {
 
     //Integration
     @Test
-    public void testConnection() {
+    public void testConnection() throws IOException{
 
         //setup
-        String data = "Ben";
+        final String data = "Ben";
         System.setIn(new ByteArrayInputStream(data.getBytes()));
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
-        Client c = new Client(reader);
+        Client c = new Client(reader, "localhost", 1111);
         c.connect();
 
         //assert
@@ -223,55 +167,20 @@ public class ClientTest {
         assertEquals(c.name, data);
 
         //cleanup
-        try{
-            //stdin.close();
-            reader.close();
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
-
+        reader.close();
     }
 
 
-    /** Helpers */
-    private void write(OutputStream out, String str) throws IOException {
-        out.write(str.getBytes());
-        out.flush();
-    }
 
     /**
-     * Writes to an OutputStream. Used for both server and client output streams.
+     * Basic server listens for and accepts one incoming request server side on a separate
+     * thread.
      */
-    private void printWrite(PrintWriter out, String str) throws IOException {
-        out.println(str);
-        out.flush();
-    }
-
-    /**
-     * Reads from an InputStream. Used for both server and client input streams.
-     */
-    private void assertRead(BufferedReader in, String expected) throws IOException {
-        //assertEquals("Too few bytes available for reading: ", expected.length(), in);
-
-        //byte[] buf = new byte[expected.length()];
-        in.readLine();
-        assertEquals(expected, new String(buf));
-    }
-
-    /**
-     * Listens for and accepts one incoming request server side on a separate
-     * thread. When a request is received, grabs its IO streams and "signals" to
-     * the client side above through the shared lock object.
-     */
-    private void listen(ServerSocket server) {
+    private static void listen(ServerSocket server) {
         new Thread(() -> {
             try {
                 Socket socket = server.accept();
                 System.out.println("Incoming connection: " + socket);
-
-                serverOut = socket.getOutputStream();
-                serverIn = socket.getInputStream();
 
             } catch (IOException e) {
                 e.printStackTrace();

@@ -20,11 +20,7 @@ public class ServerTest {
 
     @Before
     public void setUp() throws Exception {
-        serverThread = new Thread(() -> {
-            s = new Server();
-            s.connect();
-        });
-        serverThread.start();
+
     }
 
     @After

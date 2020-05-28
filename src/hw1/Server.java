@@ -12,13 +12,18 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Server {
 
 
-	ServerSocket serverSocket = null;
-	int clientNum = 0; //keeps track of how many clients were created
-	int serverPortNumber = 1111;
-	ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
+	ServerSocket serverSocket;
+	int clientNum; //keeps track of how many clients were created
+	int serverPortNumber;
+	ConcurrentHashMap<Integer, ClientHandler> clients;
 
 		
-	Server() { }
+	Server(int serverPortNumber) {
+		this.serverPortNumber = serverPortNumber;
+		serverSocket = null;
+		clientNum = 0;
+		clients = new ConcurrentHashMap<>();
+	}
 
 	public void connect(){
         //Create a new server socket
@@ -93,7 +98,7 @@ public class Server {
 
 	public static void main(String[] args)
 	{
-		Server s = new Server();
+		Server s = new Server(1111);
 		s.connect();
 		s.listen();
 
@@ -128,11 +133,6 @@ class ClientHandler implements Runnable {
 				String message = in.nextLine();
 				System.out.println(message); //prints message in server console
 
-				//exit chat
-				if(message.equals("exit")){
-					this.socket.close();
-					break;
-				}
 
 				messageServer.broadcastToClients(message, num); //prints message in all other clients consoles
 
@@ -141,11 +141,8 @@ class ClientHandler implements Runnable {
 			}
 		}
 
-		//close resources
-		this.in.close();
-		this.out.close();
-
 	}
+
 	public void sendMessageToClient(String message) {
 		out.println(message);
 		out.flush();
