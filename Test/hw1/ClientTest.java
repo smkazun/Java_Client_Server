@@ -1,12 +1,10 @@
 package hw1;
 
-
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import java.io.*;
 import java.net.ServerSocket;
@@ -45,10 +43,6 @@ public class ClientTest {
     public void testClientStart() throws IOException{
 
         BufferedReader mockReader = mock(BufferedReader.class);
-        //ReadMessage mockReadMessage = mock(ReadMessage.class);
-        //SendMessage mockSendMessage = mock(SendMessage.class);
-
-        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
 
         //Act
         Client c = new Client(mockReader, "localhost", 1111);
@@ -61,14 +55,9 @@ public class ClientTest {
         assertNotNull(c.readMessage);
         assertNotNull(c.sendMessage);
 
-        //verify(mockReadMessage).run();
-        //verify(mockSendMessage).run();
-
     }
 
 
-
-    //DONE
     @Test
     public void testReadMessageFromServer(){
 
@@ -95,7 +84,6 @@ public class ClientTest {
 
     }
 
-    //DONE
     @Test
     public void testSendMessageToServer() throws IOException {
 
@@ -120,7 +108,6 @@ public class ClientTest {
 
     }
 
-    //DONE
     @Test
     public void testCreateMessage(){
 
@@ -173,6 +160,7 @@ public class ClientTest {
 
 
     /**
+     * Helper Method.
      * Basic server listens for and accepts one incoming request server side on a separate
      * thread.
      */
