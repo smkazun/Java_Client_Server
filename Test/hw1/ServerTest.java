@@ -13,6 +13,7 @@ public class ServerTest {
     static BufferedReader mockReader;
     static PrintWriter mockWriter;
     static int num;
+    static Connection connection;
 
 
     @BeforeClass
@@ -21,6 +22,7 @@ public class ServerTest {
         mockReader = mock(BufferedReader.class);
         mockWriter = mock(PrintWriter.class);
         num = 0;
+        connection = Connection.SERVER;
 
     }
 
@@ -31,13 +33,17 @@ public class ServerTest {
         mockWriter.close();
     }
 
-    @Test
-    public void testBroadcastToClients() {
 
-        ClientHandler clientHandler1 = new ClientHandler(++num, mockServer, mockWriter, mockReader);
-        ClientHandler clientHandler2 = new ClientHandler(++num, mockServer, mockWriter, mockReader);
-        ClientHandler clientHandler3 = new ClientHandler(++num, mockServer, mockWriter, mockReader);
-        ClientHandler clientHandler4 = new ClientHandler(++num, mockServer, mockWriter, mockReader);
+    @Test
+    public void testBroadcast() {
+
+        //TODO: fix this test
+        Messenger messenger = new Messenger(mockWriter, mockReader, connection);
+
+        ClientHandler clientHandler1 = new ClientHandler(++num, mockServer, messenger);
+        ClientHandler clientHandler2 = new ClientHandler(++num, mockServer, messenger);
+        ClientHandler clientHandler3 = new ClientHandler(++num, mockServer, messenger);
+        ClientHandler clientHandler4 = new ClientHandler(++num, mockServer, messenger);
 
 
         ConcurrentHashMap<Integer, ClientHandler> mockMap = new ConcurrentHashMap<>();
@@ -47,42 +53,37 @@ public class ServerTest {
         mockMap.put(4, clientHandler4);
 
         //act
-        clientHandler1.broadcastToClients("Some message", mockMap);
+        messenger.broadcast("Some message", mockMap, clientHandler1.getClientNumber());
 
         //assert
         verify(mockWriter, times(3)).println("Some message");
-        
+        //assertEquals(num, clientHandler1.num); //TODO: need to check if the sending client got message or not
 
     }
 
     @Test
     public void testSendMessageToClient() {
 
-        ClientHandler clientHandler1 = new ClientHandler(++num, mockServer, mockWriter, mockReader);
+        Messenger messenger = new Messenger(mockWriter, mockReader, connection);
 
         //act
-        clientHandler1.sendMessageToClient("Some message");
+        messenger.sendMessage("Some message");
 
         //assert
         verify(mockWriter).println("Some message");
     }
 
     @Test
-    public void testReadMessageFromClient() {
+    public void testReadMessageFromClient() throws IOException {
 
-        try {
-            when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
+        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
 
         //Act
-        ClientHandler clientHandler = new ClientHandler(++num, mockServer, mockWriter, mockReader);
+        Messenger messenger = new Messenger(mockWriter, mockReader, connection);
 
-        String testMessage = clientHandler.readMessageFromClient();
-        String testMessage2 = clientHandler.readMessageFromClient();
-        String testMessage3 = clientHandler.readMessageFromClient();
+        String testMessage = messenger.readMessage();
+        String testMessage2 = messenger.readMessage();
+        String testMessage3 = messenger.readMessage();
 
         // Assert
         assertEquals("Hello", testMessage);
@@ -116,9 +117,8 @@ public class ServerTest {
             e.printStackTrace();
         }
 
-        assertNotNull(mockServer.serverSocket);
-        assertEquals(3, mockServer.clientNum - 1); //Because the server increments and waits for the next client but does not add it to the map until connection is made
-
+        assertNotNull(mockServer.getPortNumber());
+        assertEquals(3, mockServer.getClients().size());
     }
 
 }

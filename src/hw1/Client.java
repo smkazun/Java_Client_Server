@@ -8,20 +8,24 @@ import java.net.UnknownHostException;
 /**
  *  A client that takes in the user's name and attempts to make a connection with the server,
  *  so that multiple clients may chat with each other.
+ *
+ *  In order to properly used the client, and Client object must be instantiated
+ *  and then a call to connect must be made to establish a connection with the server.
+ *  To start communications, the start method must be invoked
  */
 public class Client {
 
 
-	Socket serverSocket;
-	String serverHostName;
-	int serverPortNumber;
-	String name;
-	PrintWriter out;
-	BufferedReader cmdLineReader;
-	BufferedReader in;
-
-    SendMessage sendMessage;
-    ReadMessage readMessage;
+	private Socket serverSocket;
+	private String serverHostName;
+	private int serverPortNumber;
+	private String name;
+	private PrintWriter out;
+	private BufferedReader cmdLineReader;
+	private BufferedReader in;
+    private Connection connection;
+    private SendHandler sendHandler;
+    private ReadHandler readHandler;
 
 
     Client(BufferedReader cmdLineReader, String serverHostName, int serverPortNumber){
@@ -29,6 +33,10 @@ public class Client {
         serverSocket = null;
         this.serverHostName = serverHostName;
         this.serverPortNumber = serverPortNumber;
+        connection = Connection.CLIENT;
+        in = null;
+        out = null;
+        name = null;
 
     }
 
@@ -55,7 +63,7 @@ public class Client {
     }
 
     /**
-     * Starts the necessary streams for communication. Uses one thread to read incoming messages via a BufferedReader,
+     * Starts the necessary streams, handlers, messengers for communication. Uses one thread to read incoming messages via a BufferedReader,
      * and another thread to send outgoing messages via a PrintWriter
      */
 	public void start(){
@@ -70,12 +78,14 @@ public class Client {
             e.printStackTrace();
         }
 
-        sendMessage = new SendMessage(serverSocket, cmdLineReader, out, name);
-        readMessage = new ReadMessage(serverSocket, in);
+        Messenger sendMessenger = new Messenger(out, cmdLineReader, connection);
+        Messenger readMessenger = new Messenger(out, in, connection);
 
-        Thread sendMessageThread = new Thread(sendMessage);
-        Thread readMessageThread = new Thread(readMessage);
+        sendHandler = new SendHandler(sendMessenger, name);
+        readHandler = new ReadHandler(readMessenger);
 
+        Thread sendMessageThread = new Thread(sendHandler);
+        Thread readMessageThread = new Thread(readHandler);
 
         sendMessageThread.start();
         readMessageThread.start();
@@ -95,9 +105,36 @@ public class Client {
             e.printStackTrace();
         }
         out.close();
-
-
     }
+
+    /**
+     * A variety of getters. Mostly used for ease of testing
+     */
+    public BufferedReader getClientInputStream(){
+        return this.in;
+    }
+
+    public PrintWriter getClientOutputStream(){
+        return this.out;
+    }
+
+    public ReadHandler getReadHandler(){
+        return this.readHandler;
+    }
+
+    public SendHandler getSendHandler(){
+        return this.sendHandler;
+    }
+
+    public String getUserName(){
+        return this.name;
+    }
+
+    public int getPortNumber(){
+        return this.serverPortNumber;
+    }
+
+
 
     /**
      * Starts the application
@@ -117,45 +154,18 @@ public class Client {
 /**
  * This class helps the clients read messages coming in from the server
  */
-class ReadMessage extends Thread {
+class ReadHandler extends Thread {
 
-    Socket socket;
-    BufferedReader in;
+    private Messenger messenger;
 
-    public ReadMessage(Socket socket, BufferedReader in) {
-        this.socket = socket;
-        this.in = in;
-    }
-
-    /**
-     * Reads incoming messages from the server
-     * @return the message from the server
-     */
-    public String readMessageFromServer(){
-
-        String message = "";
-        try {
-            message = in.readLine();
-        }
-        catch (IOException e){
-            e.printStackTrace();
-        }
-        return message;
-    }
-
-    /**
-     * Prints the messages from the server
-     */
-    public void printReadMessage()
-    {
-        String message = readMessageFromServer();
-        System.out.println(message);
+    public ReadHandler(Messenger messenger) {
+        this.messenger = messenger;
     }
 
     @Override
     public void run() {
         while (true) {
-            printReadMessage();
+            System.out.println(messenger.readMessage());
         }
     }
 }
@@ -163,55 +173,22 @@ class ReadMessage extends Thread {
 /**
  * This class helps the client send messages to other clients via the server.
  */
-class SendMessage extends Thread {
+class SendHandler extends Thread {
 
-    Socket socket;
-    BufferedReader in;
-    PrintWriter out;
     String name;
+    Messenger messenger;
 
-    public SendMessage(Socket socket, BufferedReader in, PrintWriter out, String name){
-        this.socket = socket;
-        this.in = in;
-        this.out = out;
+    public SendHandler(Messenger messenger, String name){
         this.name = name;
+        this.messenger = messenger;
     }
 
-    /**
-     * Creates a user made message
-     * @return the message to send to the server
-     */
-    public String createMessage(){
-
-        String message = "";
-        System.out.println("Send a message: ");
-
-        try {
-            message = in.readLine();
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
-
-        message = name + " has sent a message: " + message;
-
-        return message;
-
-    }
-
-    /**
-     * Sends a user created message to the server
-     */
-    public void sendMessageToServer(){
-        String message = createMessage();
-        out.println(message);
-        out.flush();
-    }
 
     @Override
     public void run() {
         while (true) {
-            sendMessageToServer();
+            String message = messenger.createMessage(name);
+            messenger.sendMessage(message);
         }
     }
 }

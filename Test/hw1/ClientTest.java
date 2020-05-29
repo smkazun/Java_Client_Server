@@ -17,6 +17,7 @@ public class ClientTest {
     static PrintWriter mockWriter;
     static Socket mockSocket;
     final String name = "Ben";
+    static Connection connection;
 
     @Before
     public void init() {
@@ -29,6 +30,7 @@ public class ClientTest {
         mockSocket = mock(Socket.class);
         mockWriter = mock(PrintWriter.class);
         mockServer = new ServerSocket(1111);
+        connection = Connection.CLIENT;
         listen(mockServer);
     }
 
@@ -48,29 +50,25 @@ public class ClientTest {
         c.start();
 
         //Assert
-        assertNotNull(c.out);
-        assertNotNull(c.in);
-        assertNotNull(c.readMessage);
-        assertNotNull(c.sendMessage);
+        assertNotNull(c.getClientOutputStream());
+        assertNotNull(c.getClientInputStream());
+        assertNotNull(c.getReadHandler());
+        assertNotNull(c.getSendHandler());
 
     }
 
 
     @Test
-    public void testReadMessageFromServer(){
+    public void testReadMessage() throws IOException{
 
-        try {
-            when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
+        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
+
+        Messenger messenger = new Messenger(mockWriter, mockReader, connection);
 
         //Act
-        ReadMessage read = new ReadMessage(mockSocket, mockReader);
-        String testMessage = read.readMessageFromServer();
-        String testMessage2 = read.readMessageFromServer();
-        String testMessage3 = read.readMessageFromServer();
+        String testMessage = messenger.readMessage();
+        String testMessage2 = messenger.readMessage();
+        String testMessage3 = messenger.readMessage();
 
         // Assert
         assertEquals("Hello", testMessage);
@@ -80,21 +78,19 @@ public class ClientTest {
     }
 
     @Test
-    public void testSendMessageToServer() throws IOException {
+    public void testSendMessage() throws IOException {
 
-        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
+        //(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
+        Messenger messenger = new Messenger(mockWriter, mockReader, connection);
 
         //Act
-        SendMessage send = new SendMessage(mockSocket, mockReader, mockWriter, name); //mockSocket
-        SendMessage spySend = spy(send);
+        String message = messenger.createMessage(name);
 
-        spySend.sendMessageToServer();
-        spySend.sendMessageToServer();
-        spySend.sendMessageToServer();
-
+        messenger.sendMessage(message);
+        messenger.sendMessage(message);
+        messenger.sendMessage(message);
 
         //assert
-        verify(spySend , times(3)).createMessage();
         verify(mockWriter).println("Ben has sent a message: Hello");
         verify(mockWriter).println("Ben has sent a message: Im well");
         verify(mockWriter).println("Ben has sent a message: and you?");
@@ -102,20 +98,16 @@ public class ClientTest {
     }
 
     @Test
-    public void testCreateMessage(){
+    public void testCreateMessage() throws IOException{
 
-        try {
-            when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
+        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
 
         //Act
-        SendMessage send = new SendMessage(mockSocket, mockReader, mockWriter, name);
-        String testMessage = send.createMessage();
-        String testMessage2 = send.createMessage();
-        String testMessage3 = send.createMessage();
+        Messenger messenger = new Messenger(mockWriter, mockReader, connection);
+
+        String testMessage = messenger.createMessage(name);
+        String testMessage2 = messenger.createMessage(name);
+        String testMessage3 = messenger.createMessage(name);
 
         // Assert
         assertEquals("Ben has sent a message: Hello", testMessage);
@@ -139,11 +131,9 @@ public class ClientTest {
         c.connect();
 
         //assert
-        assertEquals(server.serverPortNumber, c.serverPortNumber);
-        assertEquals(name, c.name);
+        assertEquals(server.getPortNumber(), c.getPortNumber());
+        assertEquals(name, c.getUserName());
 
-        //cleanup
-        reader.close();
     }
 
 
