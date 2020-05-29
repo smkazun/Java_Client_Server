@@ -1,9 +1,6 @@
 package hw1;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
@@ -16,35 +13,33 @@ public class Server {
 	int clientNum; //keeps track of how many clients were created
 	int serverPortNumber;
 	ConcurrentHashMap<Integer, ClientHandler> clients;
-
+	Socket clientSocket;
 		
 	Server(int serverPortNumber) {
 		this.serverPortNumber = serverPortNumber;
 		serverSocket = null;
 		clientNum = 0;
 		clients = new ConcurrentHashMap<>();
+		clientSocket = null;
 	}
-
-	public void connect(){
-        //Create a new server socket
-        try {
-
-            serverSocket = new ServerSocket(serverPortNumber); //opens socket at port 1111
-            System.out.println(serverSocket);
-        }
-        catch(IOException e)
-        {
-            System.out.println("Could not listen on port: " + serverPortNumber); //socket cant connect
-            System.exit(-1);
-        }
-    }
 
 
 	public void listen()
     {
+    	//create socket
+		try {
+
+			serverSocket = new ServerSocket(serverPortNumber); //opens socket at port 1111
+			System.out.println(serverSocket);
+		}
+		catch(Exception e)
+		{
+			System.out.println("Could not listen on port: " + serverPortNumber); //socket cant connect
+			System.exit(-1);
+		}
+
         //loop forever, server is always providing a service
         while(true) {
-            Socket clientSocket = null;
 
             try {
                 //waits for client to connect
@@ -54,7 +49,11 @@ public class Server {
                 //creates thread to handle client request
                 System.out.println("Server connected to client " + clientNum);
 
-                ClientHandler client = new ClientHandler(clientSocket, clientNum, this);
+                //create streams
+				BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+				PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
+
+                ClientHandler client = new ClientHandler(clientNum, this, out, in);
                 clients.put(clientNum, client); //add clients to the table
 
                 Thread clientThread = new Thread(client);
@@ -77,29 +76,12 @@ public class Server {
 	        e.printStackTrace();
         }
     }
-		
-	/**
-	 * Iterate through the list of clients and sends message to all other clients
-	 * @param
-	 * @param message
-	 * @param clientNum
-	 */
-	public synchronized void broadcastToClients(String message, int clientNum)
-	{
-		for(ConcurrentHashMap.Entry<Integer, ClientHandler> client : clients.entrySet())
-		{
-			if(client.getKey() != clientNum)
-			{
-				client.getValue().sendMessageToClient(message);
-			}
-		}
-	}
+
 
 
 	public static void main(String[] args)
 	{
 		Server s = new Server(1111);
-		s.connect();
 		s.listen();
 
 	}
@@ -108,44 +90,64 @@ public class Server {
 
 
 class ClientHandler implements Runnable {
-	
-	Socket socket; //socket on server side that connects to the client
+
 	int num; //tracks number for identification purposes
-	Scanner in;
+	BufferedReader in;
 	PrintWriter out;
 	Server messageServer;
 	
-	ClientHandler(Socket s, int n, Server server) {
-		socket = s;
+	ClientHandler( int n, Server server, PrintWriter out, BufferedReader in) {
 		num = n;
 		messageServer = server;
+		this.out = out;
+		this.in = in;
 	}
+
 	
 	@Override
 	public void run() {
 		while(true) {
-			try {
-				//get socket I/O streams
-				in = new Scanner(new BufferedInputStream(socket.getInputStream()));
-				out = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()));
 
-				//read client message
-				String message = in.nextLine();
-				System.out.println(message); //prints message in server console
+			String message = readMessageFromClient();
+			broadcastToClients(message, messageServer.clients);
+		}
+	}
 
+	public String readMessageFromClient()
+	{
+		String message = "";
+		try {
 
-				messageServer.broadcastToClients(message, num); //prints message in all other clients consoles
-
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			message = in.readLine();
+			System.out.println(message);
+		}
+		catch (IOException e){
+			e.printStackTrace();
 		}
 
+		return message;
 	}
 
 	public void sendMessageToClient(String message) {
 		out.println(message);
 		out.flush();
+	}
+
+	/**
+	 * Iterate through the list of clients and sends message to all other clients
+	 * @param
+	 * @param message
+	 *
+	 */
+	public synchronized void broadcastToClients(String message, ConcurrentHashMap<Integer, ClientHandler> clients)
+	{
+		for(ConcurrentHashMap.Entry<Integer, ClientHandler> client : clients.entrySet())
+		{
+			if(client.getKey() != num)
+			{
+				client.getValue().sendMessageToClient(message);
+			}
+		}
 	}
 	
 	

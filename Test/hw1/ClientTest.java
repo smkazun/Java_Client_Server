@@ -1,9 +1,7 @@
 package hw1;
 
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
+
 import static org.junit.Assert.*;
 import org.mockito.MockitoAnnotations;
 import java.io.*;
@@ -14,35 +12,35 @@ import static org.mockito.Mockito.*;
 
 public class ClientTest {
 
-
-    static ServerSocket server;
-
+    static ServerSocket mockServer;
+    static BufferedReader mockReader;
+    static PrintWriter mockWriter;
+    static Socket mockSocket;
+    final String name = "Ben";
 
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
     }
 
-
-
-    @BeforeClass
-    public static void setUp() throws Exception {
-
-       server = new ServerSocket(1111);
-       listen(server);
+    @Before
+    public void setUp() throws Exception {
+        mockReader = mock(BufferedReader.class);
+        mockSocket = mock(Socket.class);
+        mockWriter = mock(PrintWriter.class);
+        mockServer = new ServerSocket(1111);
+        listen(mockServer);
     }
 
 
-    @AfterClass
-    public static void tearDown() throws Exception {
-        server.close();
+    @After
+    public void tearDown() throws Exception {
+        mockServer.close();
     }
 
 
     @Test
     public void testClientStart() throws IOException{
-
-        BufferedReader mockReader = mock(BufferedReader.class);
 
         //Act
         Client c = new Client(mockReader, "localhost", 1111);
@@ -60,9 +58,6 @@ public class ClientTest {
 
     @Test
     public void testReadMessageFromServer(){
-
-        BufferedReader mockReader = mock(BufferedReader.class);
-        Socket mockSocket = mock(Socket.class);
 
         try {
             when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
@@ -87,21 +82,19 @@ public class ClientTest {
     @Test
     public void testSendMessageToServer() throws IOException {
 
-        BufferedReader mockReader = mock(BufferedReader.class);
-        Socket mockSocket = mock(Socket.class);
-        PrintWriter mockWriter = mock(PrintWriter.class);
-        final String name = "Ben";
-
         when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
 
         //Act
         SendMessage send = new SendMessage(mockSocket, mockReader, mockWriter, name); //mockSocket
+        SendMessage spySend = spy(send);
 
-        send.sendMessageToServer();
-        send.sendMessageToServer();
-        send.sendMessageToServer();
+        spySend.sendMessageToServer();
+        spySend.sendMessageToServer();
+        spySend.sendMessageToServer();
+
 
         //assert
+        verify(spySend , times(3)).createMessage();
         verify(mockWriter).println("Ben has sent a message: Hello");
         verify(mockWriter).println("Ben has sent a message: Im well");
         verify(mockWriter).println("Ben has sent a message: and you?");
@@ -110,11 +103,6 @@ public class ClientTest {
 
     @Test
     public void testCreateMessage(){
-
-        BufferedReader mockReader = mock(BufferedReader.class);
-        Socket mockSocket = mock(Socket.class);
-        PrintWriter mockWriter = mock(PrintWriter.class);
-        final String name = "Ben";
 
         try {
             when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
@@ -137,21 +125,22 @@ public class ClientTest {
     }
 
 
-    //Integration
+    //Integration Test
     @Test
-    public void testConnection() throws IOException{
+    public void testClientConnection() throws IOException{
 
         //setup
-        final String data = "Ben";
-        System.setIn(new ByteArrayInputStream(data.getBytes()));
+        Server server = new Server(1111); //use actual server for integration test
+
+        System.setIn(new ByteArrayInputStream(name.getBytes()));
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         Client c = new Client(reader, "localhost", 1111);
         c.connect();
 
         //assert
-        assertEquals(c.serverPortNumber, server.getLocalPort());
-        assertEquals(c.name, data);
+        assertEquals(server.serverPortNumber, c.serverPortNumber);
+        assertEquals(name, c.name);
 
         //cleanup
         reader.close();
@@ -160,7 +149,7 @@ public class ClientTest {
 
 
     /**
-     * Helper Method.
+     * Helper Method for mocking a server.
      * Basic server listens for and accepts one incoming request server side on a separate
      * thread.
      */
