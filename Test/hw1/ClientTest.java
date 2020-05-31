@@ -80,15 +80,17 @@ public class ClientTest {
     @Test
     public void testSendMessage() throws IOException {
 
-        //(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
+        when(mockReader.readLine()).thenReturn("Hello", "Im well", "and you?");
         Messenger messenger = new Messenger(mockWriter, mockReader, connection);
 
         //Act
-        String message = messenger.createMessage(name);
+        String message1 = messenger.createMessage(name);
+        String message2 = messenger.createMessage(name);
+        String message3 = messenger.createMessage(name);
 
-        messenger.sendMessage(message);
-        messenger.sendMessage(message);
-        messenger.sendMessage(message);
+        messenger.sendMessage(message1);
+        messenger.sendMessage(message2);
+        messenger.sendMessage(message3);
 
         //assert
         verify(mockWriter).println("Ben has sent a message: Hello");

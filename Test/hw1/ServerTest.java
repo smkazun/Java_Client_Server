@@ -36,8 +36,7 @@ public class ServerTest {
 
     @Test
     public void testBroadcast() {
-
-        //TODO: fix this test
+        
         Messenger messenger = new Messenger(mockWriter, mockReader, connection);
 
         ClientHandler clientHandler1 = new ClientHandler(++num, mockServer, messenger);
@@ -57,7 +56,6 @@ public class ServerTest {
 
         //assert
         verify(mockWriter, times(3)).println("Some message");
-        //assertEquals(num, clientHandler1.num); //TODO: need to check if the sending client got message or not
 
     }
 

@@ -69,10 +69,6 @@ public class Messenger {
     }
 
 
-    //from client
-
-
-
     /**
      * Creates a user made message
      * @return the message to send to the server
